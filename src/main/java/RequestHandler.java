@@ -1,7 +1,9 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import org.json.JSONException;
-import org.json.JSONObject;
+
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -14,86 +16,72 @@ class RequestHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-          switch (exchange.getRequestURI().getPath()) {
-            case "/start" -> {
-                try {
-                    handleStart(exchange);
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            case "/userGuess" -> {
-                try {
-                    userGuess(exchange);
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            case "/stop" -> {
-                try {
-                    stop(exchange);
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+        String query = exchange.getRequestURI().getQuery();
+        Response response = new Response();
+        switch (exchange.getRequestURI().getPath()) {
+            case "/start" -> response = handleStart(exchange);
+            case "/userGuess" -> response = userGuess(query, exchange);
+            case "/stop" -> response = stop();
+        }
+
+        exchange.sendResponseHeaders(response.statusCode, response.responseJson.toString().length());
+
+        try (OutputStream responseBody = exchange.getResponseBody()) {
+            responseBody.write(response.responseJson.toString().getBytes());
         }
     }
 
-    private void stop(HttpExchange exchange) throws JSONException, IOException {
+
+    private Response stop() {
         gameStatus = false;
-        exchange.sendResponseHeaders(200,-1);
+        return new Response(200);
+
     }
 
-    public enum NumberGuess {LESS, EQUAL, GREATER}
+    public enum NumberGuess {
+        LESS, EQUAL, GREATER
+    }
 
-    public void handleStart(HttpExchange exchange) throws IOException, JSONException {
+    public Response handleStart(HttpExchange exchange) {
         if ("GET".equals(exchange.getRequestMethod())) {
-            System.out.println(exchange.getRequestURI());
-            JSONObject response = new JSONObject();
-            response.put("GameStatus", "Started");
-            response.put("messageENG", "******");
+            ObjectNode responseJson = new ObjectMapper().createObjectNode();
+            responseJson.put("GameStatus", "Started");
+            responseJson.put("messageENG", "******");
             randomNumber = new Random().nextInt(1, 101);
             gameStatus = true;
-            System.out.println(randomNumber);
-            exchange.sendResponseHeaders(200, response.toString().length());
 
-            try (OutputStream responseBody = exchange.getResponseBody()) {
-                responseBody.write(response.toString().getBytes());
-            }
+            return new Response(200, responseJson);
         }
+        return null;
     }
 
-    public void userGuess(HttpExchange exchange) throws IOException, JSONException {
-        if ("GET".equals(exchange.getRequestMethod())) {
-            String queryParam = exchange.getRequestURI().getQuery().substring(4);
-
-            JSONObject response = numberControl(queryParam, exchange);
-            exchange.sendResponseHeaders(200, response.toString().length());
-
-            try (OutputStream responseBody = exchange.getResponseBody()) {
-                responseBody.write(response.toString().getBytes());
-            }
-        }
-    }
-
-    private JSONObject numberControl(String queryParam, HttpExchange exchange) throws JSONException, IOException {
-        JSONObject response = new JSONObject();
+    public Response userGuess(String query, HttpExchange exchange) {
         try {
-            int userGuess = Integer.parseInt(queryParam);
-            if (userGuess <= 0 || userGuess > 100 || !gameStatus) {
-                exchange.sendResponseHeaders(400, 0);
-            } else if (randomNumber == userGuess) {
-                gameStatus = false;
-                return response.put("Answer", NumberGuess.EQUAL);
-            } else if (userGuess < randomNumber) {
-                return response.put("Answer", NumberGuess.GREATER);
-            } else {
-                return response.put("Answer", NumberGuess.LESS);
+            int userInput = Integer.parseInt(query.substring(4));
+            if ("GET".equals(exchange.getRequestMethod())) {
+                return numberControl(userInput);
             }
+        } catch (NumberFormatException e) {
+            return new Response(400, new ObjectMapper().createObjectNode().put("errMessage", "Invalid input"));
+        }
+        return null;
+    }
 
-        } catch (NumberFormatException numberFormatException) {
-            exchange.sendResponseHeaders(400, 0);
+    private Response numberControl(int userGuess) {
+        ObjectNode responseJson = new ObjectMapper().createObjectNode();
+        Response response = new Response(200);
+        if (userGuess <= 0 || userGuess > 100 || !gameStatus) {
+            responseJson.put("errMessage", "Number out of bounds!");
+            response.statusCode = 400;
+        } else if (randomNumber == userGuess) {
+            gameStatus = false;
+            responseJson.put("Answer", String.valueOf(NumberGuess.EQUAL));
+        } else if (userGuess < randomNumber) {
+            responseJson.put("Answer", String.valueOf(NumberGuess.GREATER));
+        } else {
+            responseJson.put("Answer", String.valueOf(NumberGuess.LESS));
         }
         return response;
+
     }
 }
