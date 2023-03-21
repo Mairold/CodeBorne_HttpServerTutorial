@@ -9,7 +9,7 @@ import java.util.Random;
 
 class RequestHandler implements HttpHandler {
 
-    private static int randomNumber;
+    private static Integer randomNumber;
     private static boolean gameStatus;
 
     @Override
@@ -17,52 +17,66 @@ class RequestHandler implements HttpHandler {
         String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Response response = new Response();
         switch (exchange.getRequestURI().getPath()) {
-            case "/start":
+            case "/start-game":
                 switch (exchange.getRequestMethod()) {
-                    case "GET" -> response = handleStart(exchange);
+                    case "GET" -> response = handleStart();
                 }
-            case "/userGuess":
+            case "/guess":
                 switch (exchange.getRequestMethod()) {
-                    case "POST" -> response = userGuess(requestBody, exchange);
+                    case "POST" -> response = handleGuess(requestBody);
                 }
-            case "/stop":
+            case "/end-game":
                 switch (exchange.getRequestMethod()) {
-                    case "GET" -> response = stop();
+                    case "GET" -> response = handleStop();
                 }
         }
 
-        exchange.sendResponseHeaders(response.statusCode, response.responseBody == null ? -1 : response.responseBody.length());
+        log(exchange);
+        sendResponse(exchange, response);
+    }
+
+    private static void log(HttpExchange exchange) {
         System.out.println(LocalDateTime.now() + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
+    }
+
+    private static void sendResponse(HttpExchange exchange, Response response) throws IOException {
+        exchange.sendResponseHeaders(response.statusCode, response.responseBody == null ? -1 : response.responseBody.length());
         try (OutputStream responseBody = exchange.getResponseBody()) {
             responseBody.write(response.responseBody.getBytes());
         }
     }
 
-
-    private Response stop() {
-        gameStatus = false;
-        return new Response(200);
-
-    }
-
     public enum NumberGuess {
-        LESS, EQUAL, BIGGER
+        LESS, EQUAL, BIGGER;
+
     }
 
-    public Response handleStart(HttpExchange exchange) {
-        if ("GET".equals(exchange.getRequestMethod())) {
+    private Response handleStart() {
+        if (!gameStatus) {
             randomNumber = new Random().nextInt(1, 101);
             gameStatus = true;
             return new Response(200, "GameStatus > Started");
+        } else {
+            return new Response(400, "Game already running");
         }
-        return null;
     }
 
-    public Response userGuess(String requestBody, HttpExchange exchange) {
+    private Response handleGuess(String requestBody) {
+        if (!gameStatus) return new Response(400,"Game is not active");
         try {
             return numberControl(Integer.parseInt(requestBody));
         } catch (NumberFormatException e) {
             return new Response(400, "Invalid input");
+        }
+    }
+
+    private Response handleStop() {
+        if (gameStatus) {
+            randomNumber = null;
+            gameStatus = false;
+            return new Response(200);
+        } else {
+            return new Response(400,"Game is not active");
         }
     }
 
@@ -80,6 +94,5 @@ class RequestHandler implements HttpHandler {
             response.responseBody = String.valueOf(NumberGuess.LESS);
         }
         return response;
-
     }
 }
