@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
@@ -24,7 +23,7 @@ class RequestHandler implements HttpHandler {
             case "/stop" -> response = stop();
         }
 
-        exchange.sendResponseHeaders(response.statusCode, response.responseJson.toString().length());
+        exchange.sendResponseHeaders(response.statusCode, response.responseJson == null ? -1 : response.responseJson.toString().length());
 
         try (OutputStream responseBody = exchange.getResponseBody()) {
             responseBody.write(response.responseJson.toString().getBytes());
@@ -81,6 +80,7 @@ class RequestHandler implements HttpHandler {
         } else {
             responseJson.put("Answer", String.valueOf(NumberGuess.LESS));
         }
+        response.responseJson = responseJson;
         return response;
 
     }
