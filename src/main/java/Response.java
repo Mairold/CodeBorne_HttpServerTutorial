@@ -1,21 +1,19 @@
-import com.fasterxml.jackson.databind.JsonNode;
-
 public class Response {
 
     public int statusCode;
-    public JsonNode responseJson;
+    public String responseBody;
 
     public Response(int statusCode) {
         this.statusCode = statusCode;
     }
 
-    public Response(int statusCode, JsonNode responseJson) {
+    public Response(int statusCode, String responseBody) {
         this.statusCode = statusCode;
-        this.responseJson = responseJson;
+        this.responseBody = responseBody;
     }
 
-    public Response(JsonNode responseJson) {
-        this.responseJson = responseJson;
+    public Response(String responseBody) {
+        this.responseBody = responseBody;
     }
 
     public Response() {

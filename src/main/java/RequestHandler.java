@@ -1,11 +1,10 @@
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Random;
 
 class RequestHandler implements HttpHandler {
@@ -15,18 +14,27 @@ class RequestHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        String query = exchange.getRequestURI().getQuery();
+        String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Response response = new Response();
         switch (exchange.getRequestURI().getPath()) {
-            case "/start" -> response = handleStart(exchange);
-            case "/userGuess" -> response = userGuess(query, exchange);
-            case "/stop" -> response = stop();
+            case "/start":
+                switch (exchange.getRequestMethod()) {
+                    case "GET" -> response = handleStart(exchange);
+                }
+            case "/userGuess":
+                switch (exchange.getRequestMethod()) {
+                    case "POST" -> response = userGuess(requestBody, exchange);
+                }
+            case "/stop":
+                switch (exchange.getRequestMethod()) {
+                    case "GET" -> response = stop();
+                }
         }
 
-        exchange.sendResponseHeaders(response.statusCode, response.responseJson == null ? -1 : response.responseJson.toString().length());
-
+        exchange.sendResponseHeaders(response.statusCode, response.responseBody == null ? -1 : response.responseBody.length());
+        System.out.println(LocalDateTime.now() + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
         try (OutputStream responseBody = exchange.getResponseBody()) {
-            responseBody.write(response.responseJson.toString().getBytes());
+            responseBody.write(response.responseBody.getBytes());
         }
     }
 
@@ -38,49 +46,39 @@ class RequestHandler implements HttpHandler {
     }
 
     public enum NumberGuess {
-        LESS, EQUAL, GREATER
+        LESS, EQUAL, BIGGER
     }
 
     public Response handleStart(HttpExchange exchange) {
         if ("GET".equals(exchange.getRequestMethod())) {
-            ObjectNode responseJson = new ObjectMapper().createObjectNode();
-            responseJson.put("GameStatus", "Started");
-            responseJson.put("messageENG", "******");
             randomNumber = new Random().nextInt(1, 101);
             gameStatus = true;
-
-            return new Response(200, responseJson);
+            return new Response(200, "GameStatus > Started");
         }
         return null;
     }
 
-    public Response userGuess(String query, HttpExchange exchange) {
+    public Response userGuess(String requestBody, HttpExchange exchange) {
         try {
-            int userInput = Integer.parseInt(query.substring(4));
-            if ("GET".equals(exchange.getRequestMethod())) {
-                return numberControl(userInput);
-            }
+            return numberControl(Integer.parseInt(requestBody));
         } catch (NumberFormatException e) {
-            return new Response(400, new ObjectMapper().createObjectNode().put("errMessage", "Invalid input"));
+            return new Response(400, "Invalid input");
         }
-        return null;
     }
 
     private Response numberControl(int userGuess) {
-        ObjectNode responseJson = new ObjectMapper().createObjectNode();
         Response response = new Response(200);
         if (userGuess <= 0 || userGuess > 100 || !gameStatus) {
-            responseJson.put("errMessage", "Number out of bounds!");
+            response.responseBody = "Number out of bounds!";
             response.statusCode = 400;
         } else if (randomNumber == userGuess) {
             gameStatus = false;
-            responseJson.put("Answer", String.valueOf(NumberGuess.EQUAL));
+            response.responseBody = String.valueOf(NumberGuess.EQUAL);
         } else if (userGuess < randomNumber) {
-            responseJson.put("Answer", String.valueOf(NumberGuess.GREATER));
+            response.responseBody = String.valueOf(NumberGuess.BIGGER);
         } else {
-            responseJson.put("Answer", String.valueOf(NumberGuess.LESS));
+            response.responseBody = String.valueOf(NumberGuess.LESS);
         }
-        response.responseJson = responseJson;
         return response;
 
     }

@@ -7,7 +7,7 @@ public class GuessTheNumber {
 
 
     public static void main(String[] args) throws IOException {
-        InetSocketAddress addr = new InetSocketAddress("0.0.0.0", 5555);
+        InetSocketAddress addr = new InetSocketAddress("0.0.0.0", 6666);
         HttpServer httpServer = HttpServer.create(addr, 0);
         RequestHandler handler = new RequestHandler();
         httpServer.createContext("/", handler);
