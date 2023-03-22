@@ -13,7 +13,5 @@ public class GuessTheNumber {
         httpServer.createContext("/", handler);
         httpServer.start();
         System.out.println("Server started, listening at: " + addr);
-
     }
-
 }

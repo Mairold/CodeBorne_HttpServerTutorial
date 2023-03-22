@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Formatter;
 import java.util.Random;
 
 class RequestHandler implements HttpHandler {
@@ -22,7 +24,7 @@ class RequestHandler implements HttpHandler {
         Response response = new Response();
         switch (exchange.getRequestURI().getPath()) {
             case "/start-game" -> {
-                if (exchange.getRequestMethod().equals("GET")) {
+                if (exchange.getRequestMethod().equals("POST")) {
                     response = handleStart();
                 }
             }
@@ -32,7 +34,7 @@ class RequestHandler implements HttpHandler {
                 }
             }
             case "/end-game" -> {
-                if (exchange.getRequestMethod().equals("GET")) {
+                if (exchange.getRequestMethod().equals("POST")) {
                     response = handleStop();
                 }
             }
@@ -45,18 +47,18 @@ class RequestHandler implements HttpHandler {
         if (!gameStatus) {
             randomNumber = new Random().nextInt(1, 101);
             gameStatus = true;
-            return new Response(200, "GameStatus > Started");
+            return new Response(200, "GameStatus > Started.");
         } else {
-            return new Response(400, "Game already running");
+            return new Response(400, "Game already running.");
         }
     }
 
     private Response handleGuess(String requestBody) {
-        if (!gameStatus) return new Response(400, "Game is not active");
+        if (!gameStatus) return new Response(400, "Game is not active.");
         try {
             return numberControl(Integer.parseInt(requestBody));
         } catch (NumberFormatException e) {
-            return new Response(400, "Invalid input");
+            return new Response(400, "Invalid input.");
         }
     }
 
@@ -66,12 +68,13 @@ class RequestHandler implements HttpHandler {
             gameStatus = false;
             return new Response(200);
         } else {
-            return new Response(400, "Game is not active");
+            return new Response(400, "Game is not active.");
         }
     }
 
     private void log(HttpExchange exchange) {
-        System.out.println(LocalDateTime.now() + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+        System.out.println(LocalDateTime.now().format(formatter) + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
     }
 
     private void sendResponse(HttpExchange exchange, Response response) throws IOException {
@@ -90,6 +93,7 @@ class RequestHandler implements HttpHandler {
             response.statusCode = 400;
         } else if (randomNumber == userGuess) {
             gameStatus = false;
+            randomNumber = null;
             response.responseBody = String.valueOf(NumberGuess.EQUAL);
         } else if (userGuess < randomNumber) {
             response.responseBody = String.valueOf(NumberGuess.BIGGER);
