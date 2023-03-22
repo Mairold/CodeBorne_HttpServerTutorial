@@ -67,7 +67,7 @@ class RequestHandler implements HttpHandler {
         exchange.close();
     }
 
-    private void log(HttpExchange exchange) {
+    private void log(HttpExchange exchange) throws IOException {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
         System.out.println(LocalDateTime.now().format(formatter) + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
     }
