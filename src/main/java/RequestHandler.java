@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Formatter;
 import java.util.Random;
 
 class RequestHandler implements HttpHandler {
@@ -14,23 +13,53 @@ class RequestHandler implements HttpHandler {
     public enum NumberGuess {
         LESS, EQUAL, BIGGER
     }
+
     private Integer randomNumber;
     private boolean gameStatus;
+
+    private int gamesWonCounter = 0;
+    private int gamesEndedWithoutWinCounter = 0;
+    private int currentGameGuessCounter = 0;
+    private int totalGuessCounter = 0;
+    private int averageGuessesToWinGameCounter = 0;
+
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Response response = new Response();
         String methodAndPath = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
-
-        switch (methodAndPath) {
-            case "POST /start-game" -> response = handleStart();
-            case "POST /guess" -> response = handleGuess(requestBody);
-            case "POST /end-game" -> response = handleStop();
-            default -> handleNotFound(exchange);
+        try {
+            switch (methodAndPath) {
+                case "GET /status" -> response = handleStatus();
+                case "POST /start-game" -> response = handleStart();
+                case "POST /guess" -> response = handleGuess(requestBody);
+                case "POST /end-game" -> response = handleStop();
+                case "GET /stats" -> response = handleStatistics();
+                default -> handleNotFound(exchange);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        sendResponse(exchange, response);
+        try {
+            sendResponse(exchange, response);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         log(exchange);
+    }
+
+    private Response handleStatistics() {
+        String responseBody = "Games won: " + gamesWonCounter + "\n" +
+                "Games lost: " + gamesEndedWithoutWinCounter + "\n" +
+                "Average guesses per game: " + averageGuessesToWinGameCounter + "\n" +
+                "Current game guess count: " + currentGameGuessCounter + "\n" +
+                "Total guesses: " + totalGuessCounter;
+        return new Response(200, responseBody);
+    }
+
+    private Response handleStatus() {
+        return gameStatus ? new Response(200, "true") : new Response(200, "false");
     }
 
     private Response handleStart() {
@@ -53,9 +82,12 @@ class RequestHandler implements HttpHandler {
     }
 
     private Response handleStop() {
+
         if (gameStatus) {
             randomNumber = null;
             gameStatus = false;
+            gamesEndedWithoutWinCounter = gamesEndedWithoutWinCounter + 1;
+            currentGameGuessCounter = 0;
             return new Response(200);
         } else {
             return new Response(400, "Game is not active.");
@@ -67,7 +99,7 @@ class RequestHandler implements HttpHandler {
         exchange.close();
     }
 
-    private void log(HttpExchange exchange) throws IOException {
+    private void log(HttpExchange exchange) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
         System.out.println(LocalDateTime.now().format(formatter) + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
     }
@@ -89,11 +121,17 @@ class RequestHandler implements HttpHandler {
         } else if (randomNumber == userGuess) {
             gameStatus = false;
             randomNumber = null;
+            gamesWonCounter += 1;
+            totalGuessCounter += currentGameGuessCounter;
+            currentGameGuessCounter = 0;
+            averageGuessesToWinGameCounter = totalGuessCounter / gamesWonCounter;
             response.responseBody = String.valueOf(NumberGuess.EQUAL);
         } else if (userGuess < randomNumber) {
             response.responseBody = String.valueOf(NumberGuess.LESS);
+            currentGameGuessCounter += 1;
         } else {
             response.responseBody = String.valueOf(NumberGuess.BIGGER);
+            currentGameGuessCounter += 1;
         }
         return response;
     }
