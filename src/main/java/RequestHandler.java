@@ -14,7 +14,6 @@ class RequestHandler implements HttpHandler {
     public enum NumberGuess {
         LESS, EQUAL, BIGGER
     }
-
     private Integer randomNumber;
     private boolean gameStatus;
 
@@ -22,22 +21,13 @@ class RequestHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Response response = new Response();
-        switch (exchange.getRequestURI().getPath()) {
-            case "/start-game" -> {
-                if (exchange.getRequestMethod().equals("POST")) {
-                    response = handleStart();
-                }
-            }
-            case "/guess" -> {
-                if (exchange.getRequestMethod().equals("POST")) {
-                    response = handleGuess(requestBody);
-                }
-            }
-            case "/end-game" -> {
-                if (exchange.getRequestMethod().equals("POST")) {
-                    response = handleStop();
-                }
-            }
+        String methodAndPath = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+
+        switch (methodAndPath) {
+            case "POST /start-game" -> response = handleStart();
+            case "POST /guess" -> response = handleGuess(requestBody);
+            case "POST /end-game" -> response = handleStop();
+            default -> handleNotFound(exchange);
         }
         sendResponse(exchange, response);
         log(exchange);
@@ -72,6 +62,11 @@ class RequestHandler implements HttpHandler {
         }
     }
 
+    void handleNotFound(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(404, 0);
+        exchange.close();
+    }
+
     private void log(HttpExchange exchange) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
         System.out.println(LocalDateTime.now().format(formatter) + " " + exchange.getRequestMethod() + " " + exchange.getRequestURI() + " --> " + exchange.getResponseCode());
@@ -96,9 +91,9 @@ class RequestHandler implements HttpHandler {
             randomNumber = null;
             response.responseBody = String.valueOf(NumberGuess.EQUAL);
         } else if (userGuess < randomNumber) {
-            response.responseBody = String.valueOf(NumberGuess.BIGGER);
-        } else {
             response.responseBody = String.valueOf(NumberGuess.LESS);
+        } else {
+            response.responseBody = String.valueOf(NumberGuess.BIGGER);
         }
         return response;
     }
