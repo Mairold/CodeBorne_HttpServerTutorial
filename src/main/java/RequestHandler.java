@@ -6,6 +6,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 class RequestHandler implements HttpHandler {
@@ -14,9 +17,11 @@ class RequestHandler implements HttpHandler {
         LESS, EQUAL, BIGGER
     }
 
+    Map<Integer, Game> sessions = new HashMap<>();
+    Integer sessionNumber = 0;
+
     private Integer randomNumber;
     private boolean gameStatus;
-
     private int gamesWonCounter = 0;
     private int gamesEndedWithoutWinCounter = 0;
     private int currentGameGuessCounter = 0;
@@ -29,6 +34,11 @@ class RequestHandler implements HttpHandler {
         String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Response response = new Response();
         String methodAndPath = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
+
+        int sessionKey = 0;
+        if (!exchange.getRequestURI().getQuery().isEmpty())
+            sessionKey = Integer.parseInt(exchange.getRequestURI().getQuery());
+
         try {
             switch (methodAndPath) {
                 case "GET /status" -> response = handleStatus();
@@ -64,15 +74,17 @@ class RequestHandler implements HttpHandler {
 
     private Response handleStart() {
         if (!gameStatus) {
-            randomNumber = new Random().nextInt(1, 101);
-            gameStatus = true;
-            return new Response(200, "GameStatus > Started.");
+            Game game = new Game();
+            sessionNumber++;
+            sessions.put(sessionNumber, game);
+            return new Response(200, "GameStatus > Started. Session:" + sessionNumber);
         } else {
             return new Response(400, "Game already running.");
         }
     }
 
     private Response handleGuess(String requestBody) {
+
         if (!gameStatus) return new Response(400, "Game is not active.");
         try {
             return numberControl(Integer.parseInt(requestBody));
