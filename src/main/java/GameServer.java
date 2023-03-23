@@ -2,16 +2,15 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 
-public class GuessTheNumber {
+public class GameServer {
 
 
     public static void main(String[] args) throws IOException {
         String ip = args.length > 0 ? args[0] : "0.0.0.0";
         int portNumber;
         try {
-            portNumber = args.length > 1 ? Integer.parseInt(args[1]) : 6666;
+            portNumber = args.length > 1 ? Integer.parseInt(args[1]) : 5555;
         } catch (NumberFormatException e) {
             System.out.println("Entered port number format is not correct");
             return;

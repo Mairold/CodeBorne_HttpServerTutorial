@@ -12,10 +12,6 @@ public class Response {
         this.responseBody = responseBody;
     }
 
-    public Response(String responseBody) {
-        this.responseBody = responseBody;
-    }
-
     public Response() {
     }
 }
