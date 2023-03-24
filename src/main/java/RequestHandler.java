@@ -6,6 +6,8 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 class RequestHandler implements HttpHandler {
@@ -14,14 +16,16 @@ class RequestHandler implements HttpHandler {
         LESS, EQUAL, BIGGER
     }
 
+    public enum GameResult {
+        WIN, LOSS
+    }
+
     private Integer randomNumber;
     private boolean gameStatus;
+    private int gameCounter = 0;
+    private int guessCounter = 0;
+    private Map<Integer, OneGame> gameResults = new HashMap<>();
 
-    private int gamesWonCounter = 0;
-    private int gamesEndedWithoutWinCounter = 0;
-    private int currentGameGuessCounter = 0;
-    private int totalGuessCounter = 0;
-    private int averageGuessesToWinGameCounter = 0;
 
 
     @Override
@@ -50,11 +54,7 @@ class RequestHandler implements HttpHandler {
     }
 
     private Response handleStatistics() {
-        String responseBody = "Games won: " + gamesWonCounter + "\n" +
-                "Games lost: " + gamesEndedWithoutWinCounter + "\n" +
-                "Average guesses per game: " + averageGuessesToWinGameCounter + "\n" +
-                "Current game guess count: " + currentGameGuessCounter + "\n" +
-                "Total guesses: " + totalGuessCounter;
+        String responseBody =  "JSON";
         return new Response(200, responseBody);
     }
 
@@ -66,6 +66,7 @@ class RequestHandler implements HttpHandler {
         if (!gameStatus) {
             randomNumber = new Random().nextInt(1, 101);
             gameStatus = true;
+            gameCounter++;
             return new Response(200, "GameStatus > Started.");
         } else {
             return new Response(400, "Game already running.");
@@ -86,8 +87,8 @@ class RequestHandler implements HttpHandler {
         if (gameStatus) {
             randomNumber = null;
             gameStatus = false;
-            gamesEndedWithoutWinCounter = gamesEndedWithoutWinCounter + 1;
-            currentGameGuessCounter = 0;
+            gameResults.put(gameCounter, new OneGame(guessCounter, GameResult.LOSS));
+            guessCounter = 0;
             return new Response(200);
         } else {
             return new Response(400, "Game is not active.");
@@ -121,17 +122,17 @@ class RequestHandler implements HttpHandler {
         } else if (randomNumber == userGuess) {
             gameStatus = false;
             randomNumber = null;
-            gamesWonCounter += 1;
-            totalGuessCounter += currentGameGuessCounter;
-            currentGameGuessCounter = 0;
-            averageGuessesToWinGameCounter = totalGuessCounter / gamesWonCounter;
+            guessCounter++;
+            gameResults.put(gameCounter, new OneGame(guessCounter, GameResult.WIN));
+            System.out.println(gameResults.toString());
+            guessCounter = 0;
             response.responseBody = String.valueOf(NumberGuess.EQUAL);
         } else if (userGuess < randomNumber) {
+            guessCounter++;
             response.responseBody = String.valueOf(NumberGuess.LESS);
-            currentGameGuessCounter += 1;
         } else {
+            guessCounter++;
             response.responseBody = String.valueOf(NumberGuess.BIGGER);
-            currentGameGuessCounter += 1;
         }
         return response;
     }

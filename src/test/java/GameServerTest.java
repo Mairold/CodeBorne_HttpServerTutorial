@@ -12,7 +12,7 @@ import java.net.http.HttpResponse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GameServerTest {
-    private static final String baseUri = "http://0.0.0.0:5555/";
+    private static final String baseUri = "http://10.10.10.25:5555/";
     private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Test

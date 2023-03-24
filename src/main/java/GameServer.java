@@ -5,7 +5,6 @@ import java.net.InetSocketAddress;
 
 public class GameServer {
 
-
     public static void main(String[] args) throws IOException {
         String ip = args.length > 0 ? args[0] : "0.0.0.0";
         int portNumber;

@@ -9,6 +9,10 @@ repositories {
     mavenCentral()
 }
 
+jar {
+    manifest { attributes("Main-Class": "GameServer") }
+}
+
 dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.0.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
